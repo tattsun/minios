@@ -1,0 +1,138 @@
+[FORMAT "WCOFF"]
+[INSTRSET "i486p"]
+[OPTIMIZE 1]
+[OPTION 1]
+[BITS 32]
+	EXTERN	_io_hlt
+	EXTERN	_io_load_eflags
+	EXTERN	_io_cli
+	EXTERN	_io_out8
+	EXTERN	_io_store_eflags
+[FILE "bootpack.c"]
+[SECTION .text]
+	GLOBAL	_HariMain
+_HariMain:
+	PUSH	EBP
+	MOV	EBP,ESP
+	CALL	_init_palette
+	XOR	EDX,EDX
+L6:
+	MOV	AL,DL
+	AND	EAX,15
+	MOV	BYTE [655360+EDX],AL
+	INC	EDX
+	CMP	EDX,65534
+	JLE	L6
+L10:
+	CALL	_io_hlt
+	JMP	L10
+[SECTION .data]
+_rgb.0:
+	DB	0
+	DB	0
+	DB	0
+	DB	-1
+	DB	0
+	DB	0
+	DB	0
+	DB	-1
+	DB	0
+	DB	-1
+	DB	-1
+	DB	0
+	DB	0
+	DB	0
+	DB	-1
+	DB	-1
+	DB	0
+	DB	-1
+	DB	0
+	DB	-1
+	DB	-1
+	DB	-1
+	DB	-1
+	DB	-1
+	DB	-58
+	DB	-58
+	DB	-58
+	DB	-124
+	DB	0
+	DB	0
+	DB	0
+	DB	-124
+	DB	0
+	DB	-124
+	DB	-124
+	DB	0
+	DB	0
+	DB	0
+	DB	-124
+	DB	-124
+	DB	0
+	DB	-124
+	DB	0
+	DB	-124
+	DB	-124
+	DB	-124
+	DB	-124
+	DB	-124
+[SECTION .text]
+	GLOBAL	_init_palette
+_init_palette:
+	PUSH	EBP
+	MOV	EBP,ESP
+	PUSH	_rgb.0
+	PUSH	16
+	CALL	_set_palette
+	LEAVE
+	RET
+	GLOBAL	_set_palette
+_set_palette:
+	PUSH	EBP
+	MOV	EBP,ESP
+	PUSH	EDI
+	PUSH	ESI
+	PUSH	EBX
+	MOV	EBX,DWORD [8+EBP]
+	MOV	ESI,DWORD [12+EBP]
+	CALL	_io_load_eflags
+	MOV	EDI,EAX
+	CALL	_io_cli
+	PUSH	0
+	PUSH	968
+	CALL	_io_out8
+	TEST	EBX,EBX
+	POP	EAX
+	POP	EDX
+	JLE	L20
+L18:
+	MOV	AL,BYTE [ESI]
+	SHR	AL,2
+	MOVZX	EAX,AL
+	PUSH	EAX
+	PUSH	969
+	CALL	_io_out8
+	MOV	AL,BYTE [1+ESI]
+	SHR	AL,2
+	MOVZX	EAX,AL
+	PUSH	EAX
+	PUSH	969
+	CALL	_io_out8
+	MOV	AL,BYTE [2+ESI]
+	SHR	AL,2
+	ADD	ESI,3
+	MOVZX	EAX,AL
+	PUSH	EAX
+	PUSH	969
+	CALL	_io_out8
+	ADD	ESP,24
+	DEC	EBX
+	JNE	L18
+L20:
+	MOV	DWORD [8+EBP],EDI
+	LEA	ESP,DWORD [-12+EBP]
+	POP	EBX
+	POP	ESI
+	POP	EDI
+	POP	EBP
+	JMP	_io_store_eflags
