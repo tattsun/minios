@@ -1,3 +1,5 @@
+#include <stdio.h>
+
 void io_hlt(void);
 void io_cli(void);
 void io_out8(int port, int data);
@@ -9,6 +11,10 @@ void set_palette(int size, unsigned char* rgb);
 void boxfill8(unsigned char* vram, int xsize, unsigned char color, int x0, int y0, int x1, int y1);
 void init_screen(unsigned char *vram, int x, int y);
 void putfont8(unsigned char* vram, int xsize, int x, int y, char c, unsigned char *font);
+void putfont8_asc(unsigned char* vram, int xsize, int x, int y, char c, const char* str);
+void init_mouse_cursor8(char *mouse, char bc);
+void putblock8_8(unsigned char *vram, int vxsize, int pxsize,
+                 int pysize, int px0, int py0, char *buf, int bxsize);
 
 #define COL8_000000		0
 #define COL8_FF0000		1
@@ -33,20 +39,38 @@ struct BOOTINFO {
   unsigned char* vram;
 };
 
+struct SEGMENT_DESCRIPTOR {
+  short limit_low, base_low;
+  char base_mid, access_right;
+  char limit_high, base_high;
+};
+
+struct GATE_DESCRIPTOR {
+  short offset_low, selector;
+  char dw_count, access_right;
+  short offset_high;
+};
+
+void init_gdtidt(void);
+void set_segmdesc(struct SEGMENT_DESCRIPTOR* sd, unsigned int limit, int base, int ar);
+void set_gatedesc(struct GATE_DESCRIPTOR* gd, int offset, int selector, int ar);
+void load_gdtr(int limit, int addr);
+void load_idtr(int limit, int addr);
+
 void HariMain(void)
 {
   struct BOOTINFO* binfo = (struct BOOTINFO*) 0xff0;
-  static unsigned char font_A[16] = {
-    0x00, 0x18, 0x18, 0x18, 0x18, 0x24, 0x24, 0x24,
-		0x24, 0x7e, 0x42, 0x42, 0x42, 0xe7, 0x00, 0x00
-  };
+  char s[40];
+  char mouse[16*16];
 
+  init_gdtidt();
   init_palette();
   init_screen(binfo->vram, binfo->scrnx, binfo->scrny);
-  int i=0;
-  for(i=0; i<10; i++) {
-    putfont8(binfo->vram, binfo->scrnx, 10+i*8, 10, COL8_FFFFFF, font_A);
-  }
+  init_mouse_cursor8(mouse, COL8_008484);
+
+  sprintf(s, "scrnx = %d", binfo->scrnx);
+  putfont8_asc(binfo->vram, binfo->scrnx, 8, 8, COL8_FFFFFF, s);
+  putblock8_8(binfo->vram, binfo->scrnx, 16, 16, 20, 20, mouse, 16);
 
   while(1)
     io_hlt();
@@ -138,4 +162,110 @@ void putfont8(unsigned char* vram, int xsize, int x, int y, char c, unsigned cha
     if((font[i] & 0x02) != 0) p[6] = c;
     if((font[i] & 0x01) != 0) p[7] = c;
   }
+}
+
+void putfont8_asc(unsigned char* vram, int xsize, int x, int y, char c, const char* str)
+{
+  extern unsigned char hankaku[4096];
+  int i = 0;
+
+  for(; *str != '\0'; str++) {
+    putfont8(vram, xsize, x+i, y, c, hankaku + *str * 16);
+    i += 8;
+  }
+}
+
+void init_mouse_cursor8(char *mouse, char bc)
+{
+  static char cursor[16][16] = {
+		"**************..",
+		"*OOOOOOOOOOO*...",
+		"*OOOOOOOOOO*....",
+		"*OOOOOOOOO*.....",
+		"*OOOOOOOO*......",
+		"*OOOOOOO*.......",
+		"*OOOOOOO*.......",
+		"*OOOOOOOO*......",
+		"*OOOO**OOO*.....",
+		"*OOO*..*OOO*....",
+		"*OO*....*OOO*...",
+		"*O*......*OOO*..",
+		"**........*OOO*.",
+		"*..........*OOO*",
+		"............*OO*",
+		".............***"
+	};
+  int x, y;
+  for(y=0; y<16; y++) {
+    for(x=0; x<16; x++) {
+      char p = cursor[y][x];
+      int i = y*16 + x;
+
+      if(p == '*') {
+        mouse[i] = COL8_000000;
+      } else if(p == 'O') {
+        mouse[i] = COL8_FFFFFF;
+      } else if(p == '.') {
+        mouse[i] = bc;
+      }
+    }
+  }
+}
+void putblock8_8(unsigned char *vram, int vxsize, int pxsize,
+                 int pysize, int px0, int py0, char *buf, int bxsize)
+{
+  int x, y;
+  for(y=0; y<pysize; y++) {
+    for(x=0; x<pxsize; x++) {
+      vram[(py0+y)*vxsize + (px0+x)] = buf[y*bxsize + x];
+    }
+  }
+}
+
+void init_gdtidt(void)
+{
+  struct SEGMENT_DESCRIPTOR *gdt = (struct SEGMENT_DESCRIPTOR*) 0x00270000;
+  struct GATE_DESCRIPTOR    *idt = (struct GATE_DESCRIPTOR   *) 0x0026f800;
+
+  int i;
+  for(i=0; i<8192; i++) {
+    set_segmdesc(gdt+i, 0, 0, 0);
+  }
+  set_segmdesc(gdt+1, 0xffffffff, 0x00000000, 0x4092);
+  set_segmdesc(gdt+2, 0x0007ffff, 0x00280000, 0x409a);
+  load_gdtr(0xffff, (int)gdt);
+
+  for(i=0; i<256; i++) {
+    set_gatedesc(idt+i, 0, 0, 0);
+  }
+  load_idtr(0x7ff, (int)idt);
+}
+
+/*
+ * GDTを設定します
+ * limit: セグメントのサイズ
+ * base: セグメントのベースアドレス
+ * ar: アクセス属性
+ */
+void set_segmdesc(struct SEGMENT_DESCRIPTOR* sd, unsigned int limit, int base, int ar)
+{
+  if(limit > 0xffff) {
+    ar |= 0x8000; /* G_bit = 1 */
+    limit /= 0x1000;
+  }
+  sd->limit_low = limit & 0xffff;
+  sd->base_low = base & 0xffff;
+  sd->base_mid = (base >> 16) & 0xff;
+  sd->access_right = ar & 0xff;
+  sd->limit_high = ((limit >> 16) & 0x0f) | ((ar >> 8) & 0xf0);
+  sd->base_high = (base >> 24) & 0xff;
+}
+
+void set_gatedesc(struct GATE_DESCRIPTOR* gd, int offset, int selector, int ar)
+{
+  gd->offset_low = offset & 0xffff;
+  gd->selector = selector;
+  gd->dw_count = (ar >> 8) & 0xff;
+  gd->access_right = ar & 0xff;
+  gd->offset_high = (offset >> 16) & 0xffff;
 }
