@@ -32,9 +32,9 @@ hankaku.bin: hankaku.txt Makefile
 hankaku.obj: hankaku.bin Makefile
 	$(BIN2OBJ) hankaku.bin hankaku.obj _hankaku
 
-bootpack.bim: bootpack.obj naskfunc.obj hankaku.obj graphic.obj dsctbl.obj Makefile
+bootpack.bim: bootpack.obj naskfunc.obj hankaku.obj graphic.obj dsctbl.obj int.obj Makefile
 	$(OBJ2BIM) @$(RULEFILE) out:bootpack.bim stack:3136k map:bootpack.map \
-		bootpack.obj naskfunc.obj hankaku.obj graphic.obj dsctbl.obj
+		bootpack.obj naskfunc.obj hankaku.obj graphic.obj dsctbl.obj int.obj
 
 bootpack.hrb: bootpack.bim Makefile
 	$(BIM2HRB) bootpack.bim bootpack.hrb 0

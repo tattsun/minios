@@ -8,6 +8,7 @@ void HariMain(void)
   char mouse[16*16];
 
   init_gdtidt();
+  init_pic();
   init_palette();
   init_screen(binfo->vram, binfo->scrnx, binfo->scrny);
   init_mouse_cursor8(mouse, COL8_008484);
