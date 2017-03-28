@@ -5,14 +5,21 @@ struct BOOTINFO {
   unsigned char* vram;
 };
 
+#define ADR_BOOTINFO 0x00000ff0
+
 // naskfunc.nas
 void io_hlt(void);
 void io_cli(void);
+void io_sti(void);
+int io_in8(int port);
 void io_out8(int port, int data);
 int io_load_eflags(void);
 void io_store_eflags(int eflags);
 void load_gdtr(int limit, int addr);
 void load_idtr(int limit, int addr);
+void asm_inthandler21(void);
+void asm_inthandler27(void);
+void asm_inthandler2c(void);
 
 // graphic.c
 #define COL8_000000		0
@@ -33,10 +40,13 @@ void load_idtr(int limit, int addr);
 #define COL8_848484		15
 void init_palette(void);
 void set_palette(int size, unsigned char* rgb);
-void boxfill8(unsigned char* vram, int xsize, unsigned char color, int x0, int y0, int x1, int y1);
+void boxfill8(unsigned char* vram, int xsize,
+              unsigned char color, int x0, int y0, int x1, int y1);
 void init_screen(unsigned char *vram, int x, int y);
-void putfont8(unsigned char* vram, int xsize, int x, int y, char c, unsigned char *font);
-void putfont8_asc(unsigned char* vram, int xsize, int x, int y, char c, const char* str);
+void putfont8(unsigned char* vram, int xsize,
+              int x, int y, char c, unsigned char *font);
+void putfont8_asc(unsigned char* vram, int xsize,
+                  int x, int y, char c, const char* str);
 void init_mouse_cursor8(char *mouse, char bc);
 void putblock8_8(unsigned char *vram, int vxsize, int pxsize,
                  int pysize, int px0, int py0, char *buf, int bxsize);
@@ -54,7 +64,8 @@ struct GATE_DESCRIPTOR {
   short offset_high;
 };
 void init_gdtidt(void);
-void set_segmdesc(struct SEGMENT_DESCRIPTOR* sd, unsigned int limit, int base, int ar);
+void set_segmdesc(struct SEGMENT_DESCRIPTOR* sd,
+                  unsigned int limit, int base, int ar);
 void set_gatedesc(struct GATE_DESCRIPTOR* gd, int offset, int selector, int ar);
 #define ADR_IDT 0x0026f800
 #define LIMIT_IDT 0x000007ff
@@ -64,9 +75,13 @@ void set_gatedesc(struct GATE_DESCRIPTOR* gd, int offset, int selector, int ar);
 #define LIMIT_BOTPAK 0x0007ffff
 #define AR_DATA32_RW 0x4092
 #define AR_CODE32_ER 0x409a
+#define AR_INTGATE32 0x008e
 
 // int.c
 void init_pic(void);
+void inthandler21(int *esp);
+void inthandler2c(int *esp);
+void inthandler27(int *esp);
 #define PIC0_ICW1   0x0020
 #define PIC0_OCW2   0x0020
 #define PIC0_IMR    0x0021
