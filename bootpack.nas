@@ -13,11 +13,16 @@
 	EXTERN	_sprintf
 	EXTERN	_putfont8_asc
 	EXTERN	_io_out8
-	EXTERN	_io_hlt
+	EXTERN	_io_cli
+	EXTERN	_keybuf
+	EXTERN	_boxfill8
+	EXTERN	_io_stihlt
 [FILE "bootpack.c"]
 [SECTION .data]
 LC0:
 	DB	"(%d, %d)",0x00
+LC1:
+	DB	"%02X",0x00
 [SECTION .text]
 	GLOBAL	_HariMain
 _HariMain:
@@ -87,6 +92,38 @@ _HariMain:
 	PUSH	161
 	CALL	_io_out8
 	ADD	ESP,16
-L5:
-	CALL	_io_hlt
-	JMP	L5
+L7:
+	CALL	_io_cli
+	CMP	BYTE [_keybuf+1],0
+	JE	L8
+	MOV	BYTE [_keybuf+1],0
+	LEA	EBX,DWORD [-60+EBP]
+	CALL	_io_sti
+	MOVZX	EAX,BYTE [_keybuf]
+	PUSH	EAX
+	PUSH	LC1
+	PUSH	EBX
+	CALL	_sprintf
+	PUSH	30
+	PUSH	30
+	PUSH	0
+	PUSH	0
+	PUSH	14
+	MOVSX	EAX,WORD [4084]
+	PUSH	EAX
+	PUSH	DWORD [4088]
+	CALL	_boxfill8
+	ADD	ESP,40
+	PUSH	EBX
+	PUSH	7
+	PUSH	0
+	PUSH	0
+	MOVSX	EAX,WORD [4084]
+	PUSH	EAX
+	PUSH	DWORD [4088]
+	CALL	_putfont8_asc
+	ADD	ESP,24
+	JMP	L7
+L8:
+	CALL	_io_stihlt
+	JMP	L7
