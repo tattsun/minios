@@ -73,6 +73,14 @@ void HariMain(void)
           boxfill8(binfo->vram, binfo->scrnx, COL8_008484, mx, my, mx+16, my+16);
           mx += mousestate.x;
           my += mousestate.y;
+          if(mx < 0)
+            mx = 0;
+          if(my < 0)
+            my = 0;
+          if(mx > binfo->scrnx-16)
+            mx = binfo->scrnx-16;
+          if(my > binfo->scrny-16)
+            my = binfo->scrny-16;
           putblock8_8(binfo->vram, binfo->scrnx, 16, 16, mx, my, mouse, 16);
         }
       }
