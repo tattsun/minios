@@ -28,7 +28,7 @@
 LC0:
 	DB	"(%d, %d)",0x00
 LC2:
-	DB	"M %02X",0x00
+	DB	"%02X %02X %02X",0x00
 LC1:
 	DB	"K %02X",0x00
 [SECTION .text]
@@ -40,7 +40,7 @@ _HariMain:
 	PUSH	ESI
 	PUSH	EBX
 	LEA	EBX,DWORD [-316+EBP]
-	SUB	ESP,304
+	SUB	ESP,312
 	CALL	_init_gdtidt
 	CALL	_init_pic
 	CALL	_io_sti
@@ -88,6 +88,7 @@ _HariMain:
 	CALL	_putblock8_8
 	ADD	ESP,32
 	PUSH	ESI
+	XOR	ESI,ESI
 	PUSH	EDI
 	PUSH	LC0
 	PUSH	EBX
@@ -104,7 +105,7 @@ _HariMain:
 	CALL	_init_keybuf
 	CALL	_init_mousebuf
 	CALL	_enable_mouse
-L10:
+L19:
 	CALL	_io_cli
 	PUSH	_keybuf
 	CALL	_queue8_size
@@ -113,57 +114,81 @@ L10:
 	CALL	_queue8_size
 	LEA	EAX,DWORD [EAX+EBX*1]
 	POP	EBX
-	POP	ESI
+	POP	EDI
 	TEST	EAX,EAX
-	JE	L12
+	JE	L21
 	PUSH	_keybuf
 	CALL	_queue8_size
 	POP	ECX
 	TEST	EAX,EAX
-	JNE	L13
+	JNE	L22
 	PUSH	_mousebuf
 	CALL	_queue8_size
 	POP	EDX
 	TEST	EAX,EAX
-	JE	L10
+	JE	L19
 	PUSH	_mousebuf
 	CALL	_queue8_pop
 	MOVZX	EBX,AL
 	CALL	_io_sti
+	CMP	ESI,1
+	POP	EAX
+	JNE	L23
+	MOV	ESI,2
+	MOV	DWORD [-320+EBP],EBX
+	JMP	L19
+L23:
+	CMP	ESI,1
+	JLE	L24
+	CMP	ESI,2
+	JNE	L25
+	MOV	ESI,3
+	MOV	DWORD [-324+EBP],EBX
+	JMP	L19
+L25:
+	CMP	ESI,3
+	JNE	L19
 	PUSH	EBX
+	MOV	ESI,1
+	PUSH	DWORD [-324+EBP]
+	PUSH	DWORD [-320+EBP]
 	PUSH	LC2
 	LEA	EBX,DWORD [-60+EBP]
 	PUSH	EBX
 	CALL	_sprintf
-	PUSH	30
-	PUSH	60
-	PUSH	0
+	PUSH	41
+	PUSH	100
+	PUSH	25
 	PUSH	0
 	PUSH	14
 	MOVSX	EAX,WORD [4084]
 	PUSH	EAX
 	PUSH	DWORD [4088]
 	CALL	_boxfill8
-	ADD	ESP,44
-L11:
+	ADD	ESP,48
 	PUSH	EBX
 	PUSH	7
-	PUSH	0
+	PUSH	25
+L20:
 	PUSH	0
 	MOVSX	EAX,WORD [4084]
 	PUSH	EAX
 	PUSH	DWORD [4088]
 	CALL	_putfont8_asc
 	ADD	ESP,24
-	JMP	L10
-L13:
+	JMP	L19
+L24:
+	TEST	ESI,ESI
+	JNE	L19
+	CMP	EBX,250
+	JNE	L19
+	MOV	ESI,1
+	JMP	L19
+L22:
 	PUSH	_keybuf
 	CALL	_queue8_pop
 	MOVZX	EBX,AL
 	CALL	_io_sti
-	PUSH	_keybuf
-	CALL	_queue8_size
-	MOV	DWORD [ESP],EAX
 	PUSH	EBX
 	PUSH	LC1
 	LEA	EBX,DWORD [-60+EBP]
@@ -178,21 +203,24 @@ L13:
 	PUSH	EAX
 	PUSH	DWORD [4088]
 	CALL	_boxfill8
-	ADD	ESP,48
-	JMP	L11
-L12:
+	ADD	ESP,44
+	PUSH	EBX
+	PUSH	7
+	PUSH	0
+	JMP	L20
+L21:
 	CALL	_io_stihlt
-	JMP	L10
+	JMP	L19
 	GLOBAL	_wait_KBC_sendready
 _wait_KBC_sendready:
 	PUSH	EBP
 	MOV	EBP,ESP
-L15:
+L29:
 	PUSH	100
 	CALL	_io_in8
 	POP	EDX
 	AND	EAX,2
-	JNE	L15
+	JNE	L29
 	LEAVE
 	RET
 	GLOBAL	_init_keyboard

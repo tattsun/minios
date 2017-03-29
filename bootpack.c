@@ -37,6 +37,7 @@ void HariMain(void)
   init_mousebuf();
 
   int data;
+  int mouse_phase = 0, m1, m2, m3;
 
   enable_mouse();
   
@@ -49,16 +50,34 @@ void HariMain(void)
         data = queue8_pop(&keybuf);
         io_sti();
 
-        sprintf(s, "K %02X", data, queue8_size(&keybuf));
+        sprintf(s, "K %02X", data);
         boxfill8(binfo->vram, binfo->scrnx, COL8_008484, 0, 0, 60, 30);
         putfont8_asc(binfo->vram, binfo->scrnx, 0, 0, COL8_FFFFFF, s);
       } else if(queue8_size(&mousebuf) != 0) {
         data = queue8_pop(&mousebuf);
         io_sti();
-
-        sprintf(s, "M %02X", data);
-        boxfill8(binfo->vram, binfo->scrnx, COL8_008484, 0, 0, 60, 30);
-        putfont8_asc(binfo->vram, binfo->scrnx, 0, 0, COL8_FFFFFF, s);
+        
+        switch(mouse_phase) {
+        case 0:
+          if(data == 0xfa) mouse_phase++;
+          break;
+        case 1:
+          m1 = data;
+          mouse_phase++;
+          break;
+        case 2:
+          m2 = data;
+          mouse_phase++;
+          break;
+        case 3:
+          m3 = data;
+          mouse_phase = 1;
+          
+          sprintf(s, "%02X %02X %02X", m1, m2, m3);
+          boxfill8(binfo->vram, binfo->scrnx, COL8_008484, 0, 25, 100, 41);
+          putfont8_asc(binfo->vram, binfo->scrnx, 0, 25, COL8_FFFFFF, s);
+          break;
+        }
       }
     }
   }
