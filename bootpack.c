@@ -69,6 +69,11 @@ void HariMain(void)
           sprintf(s, "%d %d", mousestate.x, mousestate.y);
           boxfill8(binfo->vram, binfo->scrnx, COL8_008484, 0, 25, 100, 41);
           putfont8_asc(binfo->vram, binfo->scrnx, 0, 25, COL8_FFFFFF, s);
+
+          boxfill8(binfo->vram, binfo->scrnx, COL8_008484, mx, my, mx+16, my+16);
+          mx += mousestate.x;
+          my += mousestate.y;
+          putblock8_8(binfo->vram, binfo->scrnx, 16, 16, mx, my, mouse, 16);
         }
       }
     }
