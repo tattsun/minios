@@ -2,6 +2,7 @@
 #include "bootpack.h"
 
 extern queue8_t keybuf;
+extern queue8_t mousebuf;
 
 void init_keyboard(void);
 void enable_mouse(void);
@@ -33,6 +34,7 @@ void HariMain(void)
   putfont8_asc(binfo->vram, binfo->scrnx, 8, 8, COL8_FFFFFF, s);
 
   init_keybuf();
+  init_mousebuf();
 
   int data;
 
@@ -40,15 +42,24 @@ void HariMain(void)
   
   while(1) {
     io_cli();
-    if(queue8_size(&keybuf) == 0) {
+    if(queue8_size(&keybuf) + queue8_size(&mousebuf) == 0) {
       io_stihlt();
     } else {
-      data = queue8_pop(&keybuf);
-      io_sti();
-      
-      sprintf(s, "%02X / %d", data, queue8_size(&keybuf));
-      boxfill8(binfo->vram, binfo->scrnx, COL8_008484, 0, 0, 60, 30);
-      putfont8_asc(binfo->vram, binfo->scrnx, 0, 0, COL8_FFFFFF, s);
+      if(queue8_size(&keybuf) != 0) {
+        data = queue8_pop(&keybuf);
+        io_sti();
+
+        sprintf(s, "K %02X", data, queue8_size(&keybuf));
+        boxfill8(binfo->vram, binfo->scrnx, COL8_008484, 0, 0, 60, 30);
+        putfont8_asc(binfo->vram, binfo->scrnx, 0, 0, COL8_FFFFFF, s);
+      } else if(queue8_size(&mousebuf) != 0) {
+        data = queue8_pop(&mousebuf);
+        io_sti();
+
+        sprintf(s, "M %02X", data);
+        boxfill8(binfo->vram, binfo->scrnx, COL8_008484, 0, 0, 60, 30);
+        putfont8_asc(binfo->vram, binfo->scrnx, 0, 0, COL8_FFFFFF, s);
+      }
     }
   }
 }

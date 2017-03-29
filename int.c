@@ -27,10 +27,14 @@ void init_pic(void)
 queue8_t keybuf;
 unsigned char keybuf_buf[32];
 
+queue8_t mousebuf;
+unsigned char mousebuf_buf[128];
+
 void init_keybuf(void)
 {
   init_queue8(&keybuf, keybuf_buf, 32);
 }
+
 
 // PS/2キーボードからの割り込み
 void inthandler21(int *esp)
@@ -42,16 +46,20 @@ void inthandler21(int *esp)
   queue8_push(&keybuf, data);
 }
 
+void init_mousebuf(void)
+{
+  init_queue8(&mousebuf, mousebuf_buf, 128);
+}
+
 // PS/2マウスからの割り込み
 void inthandler2c(int *esp)
 {
-  struct BOOTINFO *binfo = (struct BOOTINFO *) ADR_BOOTINFO;
-  boxfill8(binfo->vram, binfo->scrnx, COL8_000000, 0, 0, 32*8-1, 15);
-  putfont8_asc(binfo->vram, binfo->scrnx, 0, 0,
-               COL8_FFFFFF, "INT 2C(IRQ-12) : PS/2 mouse");
-  for(;;) {
-    io_hlt();
-  }
+  unsigned char data;
+  io_out8(PIC1_OCW2, 0x64); // IRQ-12受付完了をPICに通知
+  io_out8(PIC0_OCW2, 0x62); // IRQ-02受付完了をPICに通知
+  data = io_in8(PORT_KEYDAT);
+
+  queue8_push(&mousebuf, data);
 }
 
 // PIC0からの不完全割り込み対策

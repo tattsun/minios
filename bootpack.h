@@ -81,6 +81,7 @@ void set_gatedesc(struct GATE_DESCRIPTOR* gd, int offset, int selector, int ar);
 // int.c
 void init_pic(void);
 void init_keybuf(void);
+void init_mousebuf(void);
 void inthandler21(int *esp);
 void inthandler2c(int *esp);
 void inthandler27(int *esp);
