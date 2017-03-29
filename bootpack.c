@@ -1,7 +1,10 @@
 #include <stdio.h>
 #include "bootpack.h"
 
-extern struct KEYBUF keybuf;
+extern queue8_t keybuf;
+
+void init_keyboard(void);
+void enable_mouse(void);
 
 void HariMain(void)
 {
@@ -14,6 +17,11 @@ void HariMain(void)
   init_pic();
   io_sti(); // IDT/PICの初期化が終わったのでCPU割り込み禁止を解除
 
+  io_out8(PIC0_IMR, 0xf9); // PIC1とキーボードを許可
+  io_out8(PIC1_IMR, 0xef); // マウスを許可
+
+  init_keyboard();
+
   init_palette();
   init_screen(binfo->vram, binfo->scrnx, binfo->scrny);
 
@@ -24,22 +32,60 @@ void HariMain(void)
   sprintf(s, "(%d, %d)", mx, my);
   putfont8_asc(binfo->vram, binfo->scrnx, 8, 8, COL8_FFFFFF, s);
 
-  io_out8(PIC0_IMR, 0xf9); // PIC1とキーボードを許可(11111001)
-  io_out8(PIC1_IMR, 0xef); // マウスを許可(11101111)
+  init_keybuf();
 
   int data;
 
+  enable_mouse();
+  
   while(1) {
     io_cli();
-    if(keybuf.flag == 0) {
+    if(queue8_size(&keybuf) == 0) {
       io_stihlt();
     } else {
-      data = keybuf.data;
-      keybuf.flag = 0;
+      data = queue8_pop(&keybuf);
       io_sti();
-      sprintf(s, "%02X", keybuf.data);
-      boxfill8(binfo->vram, binfo->scrnx, COL8_008484, 0, 0, 30, 30);
+      
+      sprintf(s, "%02X / %d", data, queue8_size(&keybuf));
+      boxfill8(binfo->vram, binfo->scrnx, COL8_008484, 0, 0, 60, 30);
       putfont8_asc(binfo->vram, binfo->scrnx, 0, 0, COL8_FFFFFF, s);
     }
   }
+}
+
+
+#define PORT_KEYDAT 0x0060
+#define PORT_KEYSTA 0x0064
+#define PORT_KEYCMD 0x0064
+#define KEYSTA_SEND_NOTREADY 0x02
+#define KEYCMD_WRITE_MODE    0x60
+#define KBC_MODE             0x47
+
+void wait_KBC_sendready(void)
+{
+  for(;;) {
+    if((io_in8(PORT_KEYSTA) & KEYSTA_SEND_NOTREADY) == 0) {
+      break;
+    }
+  }
+}
+
+// キーボードコントローラ初期化
+void init_keyboard(void)
+{
+  wait_KBC_sendready();
+  io_out8(PORT_KEYCMD, KEYCMD_WRITE_MODE);
+  wait_KBC_sendready();
+  io_out8(PORT_KEYDAT, KBC_MODE);
+}
+
+#define KEYCMD_SENDTO_MOUSE 0xd4
+#define MOUSECMD_ENABLE 0xf4
+
+void enable_mouse(void)
+{
+  wait_KBC_sendready();
+  io_out8(PORT_KEYCMD, KEYCMD_SENDTO_MOUSE);
+  wait_KBC_sendready();
+  io_out8(PORT_KEYDAT, MOUSECMD_ENABLE);
 }

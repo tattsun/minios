@@ -24,7 +24,13 @@ void init_pic(void)
 
 #define PORT_KEYDAT 0x0060
 
-struct KEYBUF keybuf;
+queue8_t keybuf;
+unsigned char keybuf_buf[32];
+
+void init_keybuf(void)
+{
+  init_queue8(&keybuf, keybuf_buf, 32);
+}
 
 // PS/2キーボードからの割り込み
 void inthandler21(int *esp)
@@ -33,10 +39,7 @@ void inthandler21(int *esp)
   io_out8(PIC0_OCW2, 0x61); // IRQ-01受付完了をPICに通知
   data = io_in8(PORT_KEYDAT);
 
-  if(keybuf.flag == 0) {
-    keybuf.data = data;
-    keybuf.flag = 1;
-  }
+  queue8_push(&keybuf, data);
 }
 
 // PS/2マウスからの割り込み

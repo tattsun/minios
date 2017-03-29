@@ -79,11 +79,8 @@ void set_gatedesc(struct GATE_DESCRIPTOR* gd, int offset, int selector, int ar);
 #define AR_INTGATE32 0x008e
 
 // int.c
-struct KEYBUF {
-  unsigned char data, flag;
-};
-
 void init_pic(void);
+void init_keybuf(void);
 void inthandler21(int *esp);
 void inthandler2c(int *esp);
 void inthandler27(int *esp);
@@ -99,3 +96,13 @@ void inthandler27(int *esp);
 #define PIC1_ICW2   0x00a1
 #define PIC1_ICW3   0x00a1
 #define PIC1_ICW4   0x00a1
+
+// queue.c
+typedef struct {
+  unsigned char* buf;
+  int cap, size, head, last;
+} queue8_t;
+void init_queue8(queue8_t* q, unsigned char* buf, int cap);
+void queue8_push(queue8_t* q, unsigned char data);
+unsigned char queue8_pop(queue8_t* q);
+int queue8_size(queue8_t* q);
