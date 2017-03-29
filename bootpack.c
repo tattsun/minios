@@ -4,8 +4,15 @@
 extern queue8_t keybuf;
 extern queue8_t mousebuf;
 
+typedef struct {
+  int x, y, phase, btn;
+  int data[3];
+} mousestate_t;
+
 void init_keyboard(void);
 void enable_mouse(void);
+void init_mousestate(mousestate_t* ms);
+int decode_mousestate(mousestate_t* ms, int data);
 
 void HariMain(void)
 {
@@ -37,7 +44,8 @@ void HariMain(void)
   init_mousebuf();
 
   int data;
-  int mouse_phase = 0, m1, m2, m3;
+  mousestate_t mousestate;
+  init_mousestate(&mousestate);
 
   enable_mouse();
   
@@ -56,27 +64,11 @@ void HariMain(void)
       } else if(queue8_size(&mousebuf) != 0) {
         data = queue8_pop(&mousebuf);
         io_sti();
-        
-        switch(mouse_phase) {
-        case 0:
-          if(data == 0xfa) mouse_phase++;
-          break;
-        case 1:
-          m1 = data;
-          mouse_phase++;
-          break;
-        case 2:
-          m2 = data;
-          mouse_phase++;
-          break;
-        case 3:
-          m3 = data;
-          mouse_phase = 1;
-          
-          sprintf(s, "%02X %02X %02X", m1, m2, m3);
+
+        if(decode_mousestate(&mousestate, data) != 0) {
+          sprintf(s, "%d %d", mousestate.x, mousestate.y);
           boxfill8(binfo->vram, binfo->scrnx, COL8_008484, 0, 25, 100, 41);
           putfont8_asc(binfo->vram, binfo->scrnx, 0, 25, COL8_FFFFFF, s);
-          break;
         }
       }
     }
@@ -118,4 +110,57 @@ void enable_mouse(void)
   io_out8(PORT_KEYCMD, KEYCMD_SENDTO_MOUSE);
   wait_KBC_sendready();
   io_out8(PORT_KEYDAT, MOUSECMD_ENABLE);
+}
+
+void init_mousestate(mousestate_t* ms)
+{
+  ms->x = 0;
+  ms->y = 0;
+  ms->phase = 0;
+  ms->btn = 0;
+  ms->data[0] = 0;
+  ms->data[1] = 0;
+  ms->data[2] = 0;
+}
+
+// return: 0(未デコード) 1(デコード済み)
+int decode_mousestate(mousestate_t* ms, int data)
+{
+  if(ms->phase == 0) {
+    if(data == 0xfa)
+      ms->phase++;
+    return 0;
+  }
+
+  if(ms->phase == 1) {
+    if((data & 0xc8) == 0x08) { // phase1を待つ(データロス対策)
+      ms->data[0] = data;
+      ms->phase++;
+    }
+    return 0;
+  }
+  
+  if(ms->phase == 2) {
+    ms->data[1] = data;
+    ms->phase++;
+    return 0;
+  }
+  
+  if(ms->phase == 3) {
+    ms->data[2] = data;
+    ms->phase = 1;
+
+    ms->x = ms->data[1];
+    ms->y = ms->data[2];
+    ms->btn = ms->data[0] & 0x07;
+    // ??
+    if((ms->data[0] & 0x10) != 0)
+      ms->x |= 0xffffff00;
+    if((ms->data[0] & 0x20) != 0)
+      ms->y |= 0xffffff00;
+
+    ms->y = -ms->y;
+    return 1;
+  }
+  return 0;
 }
