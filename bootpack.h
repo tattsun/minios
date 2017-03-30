@@ -1,3 +1,11 @@
+#define PORT_KEYDAT 0x0060
+#define PORT_KEYSTA 0x0064
+#define PORT_KEYCMD 0x0064
+#define KEYSTA_SEND_NOTREADY 0x02
+#define KEYCMD_WRITE_MODE    0x60
+#define KBC_MODE             0x47
+
+
 // asmhead.nas
 struct BOOTINFO {
   char cyls, leds, vmode, reserve;
@@ -107,3 +115,15 @@ void init_queue8(queue8_t* q, unsigned char* buf, int cap);
 void queue8_push(queue8_t* q, unsigned char data);
 unsigned char queue8_pop(queue8_t* q);
 int queue8_size(queue8_t* q);
+
+// mouse.c
+typedef struct {
+  int x, y, phase, btn;
+  int data[3];
+} mousestate_t;
+void enable_mouse(void);
+void init_mousestate(mousestate_t* ms);
+int decode_mousestate(mousestate_t* ms, int data);
+
+// keyboard.c
+void wait_KBC_sendready(void);

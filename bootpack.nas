@@ -7,6 +7,7 @@
 	EXTERN	_init_pic
 	EXTERN	_io_sti
 	EXTERN	_io_out8
+	EXTERN	_init_keyboard
 	EXTERN	_init_palette
 	EXTERN	_init_screen
 	EXTERN	_init_mouse_cursor8
@@ -15,14 +16,16 @@
 	EXTERN	_putfont8_asc
 	EXTERN	_init_keybuf
 	EXTERN	_init_mousebuf
+	EXTERN	_init_mousestate
+	EXTERN	_enable_mouse
 	EXTERN	_io_cli
 	EXTERN	_keybuf
 	EXTERN	_queue8_size
 	EXTERN	_mousebuf
 	EXTERN	_queue8_pop
+	EXTERN	_decode_mousestate
 	EXTERN	_boxfill8
 	EXTERN	_io_stihlt
-	EXTERN	_io_in8
 [FILE "bootpack.c"]
 [SECTION .data]
 LC0:
@@ -248,118 +251,3 @@ L17:
 L16:
 	CALL	_io_stihlt
 	JMP	L15
-	GLOBAL	_wait_KBC_sendready
-_wait_KBC_sendready:
-	PUSH	EBP
-	MOV	EBP,ESP
-L21:
-	PUSH	100
-	CALL	_io_in8
-	POP	EDX
-	AND	EAX,2
-	JNE	L21
-	LEAVE
-	RET
-	GLOBAL	_init_keyboard
-_init_keyboard:
-	PUSH	EBP
-	MOV	EBP,ESP
-	CALL	_wait_KBC_sendready
-	PUSH	96
-	PUSH	100
-	CALL	_io_out8
-	CALL	_wait_KBC_sendready
-	PUSH	71
-	PUSH	96
-	CALL	_io_out8
-	LEAVE
-	RET
-	GLOBAL	_enable_mouse
-_enable_mouse:
-	PUSH	EBP
-	MOV	EBP,ESP
-	CALL	_wait_KBC_sendready
-	PUSH	212
-	PUSH	100
-	CALL	_io_out8
-	CALL	_wait_KBC_sendready
-	PUSH	244
-	PUSH	96
-	CALL	_io_out8
-	LEAVE
-	RET
-	GLOBAL	_init_mousestate
-_init_mousestate:
-	PUSH	EBP
-	MOV	EBP,ESP
-	MOV	EAX,DWORD [8+EBP]
-	MOV	DWORD [EAX],0
-	MOV	DWORD [4+EAX],0
-	MOV	DWORD [8+EAX],0
-	MOV	DWORD [12+EAX],0
-	MOV	DWORD [16+EAX],0
-	MOV	DWORD [20+EAX],0
-	MOV	DWORD [24+EAX],0
-	POP	EBP
-	RET
-	GLOBAL	_decode_mousestate
-_decode_mousestate:
-	PUSH	EBP
-	MOV	EBP,ESP
-	PUSH	EBX
-	MOV	EDX,DWORD [8+EBP]
-	MOV	ECX,DWORD [12+EBP]
-	MOV	EAX,DWORD [8+EDX]
-	TEST	EAX,EAX
-	JNE	L29
-	CMP	ECX,250
-	JE	L37
-L34:
-	XOR	EAX,EAX
-L28:
-	POP	EBX
-	POP	EBP
-	RET
-L37:
-	MOV	DWORD [8+EDX],1
-	JMP	L34
-L29:
-	CMP	EAX,1
-	JE	L38
-	CMP	EAX,2
-	JE	L39
-	CMP	EAX,3
-	JNE	L34
-	MOV	DWORD [24+EDX],ECX
-	MOV	DWORD [4+EDX],ECX
-	MOV	ECX,DWORD [16+EDX]
-	MOV	EBX,DWORD [20+EDX]
-	MOV	EAX,ECX
-	MOV	DWORD [EDX],EBX
-	AND	EAX,7
-	MOV	DWORD [8+EDX],1
-	MOV	DWORD [12+EDX],EAX
-	TEST	ECX,16
-	JE	L35
-	OR	EBX,-256
-	MOV	DWORD [EDX],EBX
-L35:
-	AND	ECX,32
-	JE	L36
-	OR	DWORD [4+EDX],-256
-L36:
-	NEG	DWORD [4+EDX]
-	MOV	EAX,1
-	JMP	L28
-L39:
-	MOV	DWORD [20+EDX],ECX
-	MOV	DWORD [8+EDX],3
-	JMP	L34
-L38:
-	MOV	EAX,ECX
-	AND	EAX,200
-	CMP	EAX,8
-	JNE	L34
-	MOV	DWORD [16+EDX],ECX
-	MOV	DWORD [8+EDX],2
-	JMP	L34

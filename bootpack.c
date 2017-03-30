@@ -4,15 +4,7 @@
 extern queue8_t keybuf;
 extern queue8_t mousebuf;
 
-typedef struct {
-  int x, y, phase, btn;
-  int data[3];
-} mousestate_t;
-
 void init_keyboard(void);
-void enable_mouse(void);
-void init_mousestate(mousestate_t* ms);
-int decode_mousestate(mousestate_t* ms, int data);
 
 void HariMain(void)
 {
@@ -89,91 +81,3 @@ void HariMain(void)
 }
 
 
-#define PORT_KEYDAT 0x0060
-#define PORT_KEYSTA 0x0064
-#define PORT_KEYCMD 0x0064
-#define KEYSTA_SEND_NOTREADY 0x02
-#define KEYCMD_WRITE_MODE    0x60
-#define KBC_MODE             0x47
-
-void wait_KBC_sendready(void)
-{
-  for(;;) {
-    if((io_in8(PORT_KEYSTA) & KEYSTA_SEND_NOTREADY) == 0) {
-      break;
-    }
-  }
-}
-
-// キーボードコントローラ初期化
-void init_keyboard(void)
-{
-  wait_KBC_sendready();
-  io_out8(PORT_KEYCMD, KEYCMD_WRITE_MODE);
-  wait_KBC_sendready();
-  io_out8(PORT_KEYDAT, KBC_MODE);
-}
-
-#define KEYCMD_SENDTO_MOUSE 0xd4
-#define MOUSECMD_ENABLE 0xf4
-
-void enable_mouse(void)
-{
-  wait_KBC_sendready();
-  io_out8(PORT_KEYCMD, KEYCMD_SENDTO_MOUSE);
-  wait_KBC_sendready();
-  io_out8(PORT_KEYDAT, MOUSECMD_ENABLE);
-}
-
-void init_mousestate(mousestate_t* ms)
-{
-  ms->x = 0;
-  ms->y = 0;
-  ms->phase = 0;
-  ms->btn = 0;
-  ms->data[0] = 0;
-  ms->data[1] = 0;
-  ms->data[2] = 0;
-}
-
-// return: 0(未デコード) 1(デコード済み)
-int decode_mousestate(mousestate_t* ms, int data)
-{
-  if(ms->phase == 0) {
-    if(data == 0xfa)
-      ms->phase++;
-    return 0;
-  }
-
-  if(ms->phase == 1) {
-    if((data & 0xc8) == 0x08) { // phase1を待つ(データロス対策)
-      ms->data[0] = data;
-      ms->phase++;
-    }
-    return 0;
-  }
-  
-  if(ms->phase == 2) {
-    ms->data[1] = data;
-    ms->phase++;
-    return 0;
-  }
-  
-  if(ms->phase == 3) {
-    ms->data[2] = data;
-    ms->phase = 1;
-
-    ms->x = ms->data[1];
-    ms->y = ms->data[2];
-    ms->btn = ms->data[0] & 0x07;
-    // ??
-    if((ms->data[0] & 0x10) != 0)
-      ms->x |= 0xffffff00;
-    if((ms->data[0] & 0x20) != 0)
-      ms->y |= 0xffffff00;
-
-    ms->y = -ms->y;
-    return 1;
-  }
-  return 0;
-}
