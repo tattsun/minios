@@ -4,6 +4,8 @@
 #define KEYSTA_SEND_NOTREADY 0x02
 #define KEYCMD_WRITE_MODE    0x60
 #define KBC_MODE             0x47
+#define KEYCMD_SENDTO_MOUSE 0xd4
+#define MOUSECMD_ENABLE 0xf4
 
 
 // asmhead.nas
@@ -127,3 +129,4 @@ int decode_mousestate(mousestate_t* ms, int data);
 
 // keyboard.c
 void wait_KBC_sendready(void);
+void init_keyboard(void);

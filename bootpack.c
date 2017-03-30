@@ -4,8 +4,6 @@
 extern queue8_t keybuf;
 extern queue8_t mousebuf;
 
-void init_keyboard(void);
-
 void HariMain(void)
 {
   struct BOOTINFO* binfo = (struct BOOTINFO*) 0xff0;
@@ -79,5 +77,4 @@ void HariMain(void)
     }
   }
 }
-
 

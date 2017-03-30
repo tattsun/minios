@@ -1,16 +1,5 @@
 #include "bootpack.h"
 
-// キーボードコントローラ初期化
-void init_keyboard(void)
-{
-  wait_KBC_sendready();
-  io_out8(PORT_KEYCMD, KEYCMD_WRITE_MODE);
-  wait_KBC_sendready();
-  io_out8(PORT_KEYDAT, KBC_MODE);
-}
-
-#define KEYCMD_SENDTO_MOUSE 0xd4
-#define MOUSECMD_ENABLE 0xf4
 
 void enable_mouse(void)
 {
