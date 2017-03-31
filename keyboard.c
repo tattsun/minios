@@ -1,4 +1,4 @@
-#include "bootpack.c"
+#include "bootpack.h"
 
 // キーボードコントローラ初期化
 void init_keyboard(void)

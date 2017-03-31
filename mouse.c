@@ -1,6 +1,5 @@
 #include "bootpack.h"
 
-
 void enable_mouse(void)
 {
   wait_KBC_sendready();
